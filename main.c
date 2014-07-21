@@ -20,6 +20,7 @@
 #include "shell.h"
 #include "ansi.h"
 #include "status.h"
+#include "test.h"
 
 #define SHELL_WA_SIZE   THD_WA_SIZE(2048)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
@@ -82,6 +83,24 @@ int main(void) {
 	 */
 	halInit();
 	chSysInit();
+
+	  /*
+	   * Activates the serial driver 2 using the driver default configuration.
+	   * PA2(TX) and PA3(RX) are routed to USART2.
+	   */
+	  sdStart(&SD2, NULL);
+	  palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
+	  palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
+
+	  /*
+	   * If the user button is pressed after the reset then the test suite is
+	   * executed immediately before activating the various device drivers in
+	   * order to not alter the benchmark scores.
+	   */
+	  if (palReadPad(GPIOA, GPIOA_BUTTON))
+	    TestThread(&SD2);
+
+
 	/*
 	 * Initializes a serial-over-USB CDC driver.
 	 */
@@ -120,6 +139,10 @@ int main(void) {
 				shelltp0 = NULL;
 			}
 		}
+		//added by myself
+		if (palReadPad(GPIOA, GPIOA_BUTTON))
+		      TestThread(&SD2);
+		//added by myself
 		chThdSleepMilliseconds(1000);
 	}
 }
