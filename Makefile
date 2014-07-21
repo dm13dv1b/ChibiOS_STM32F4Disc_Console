@@ -44,7 +44,7 @@ endif
 # Enables the use of FPU on Cortex-M4.
 # Enable this if you really want to use the STM FWLib.
 ifeq ($(USE_FPU),)
-  USE_FPU = yes
+  USE_FPU = no
 endif
 
 # Enable this if you really want to use the STM FWLib.
@@ -64,7 +64,7 @@ endif
 PROJECT = console
 
 # Imported source files and paths
-CHIBIOS = C:\ChibiStudio\chibios
+CHIBIOS = /home/makkmarci/devel/ChibiOS_2.6.5
 include $(CHIBIOS)/boards/ST_STM32F4_DISCOVERY/board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F4xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk

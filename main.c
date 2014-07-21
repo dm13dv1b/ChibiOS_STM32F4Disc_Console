@@ -24,6 +24,10 @@
 #define SHELL_WA_SIZE   THD_WA_SIZE(2048)
 #define TEST_WA_SIZE    THD_WA_SIZE(256)
 
+/*
+ * UART driver configuration structure.
+ */
+
 /* Virtual serial port over USB.*/
 SerialUSBDriver SDU1;
 
@@ -41,12 +45,25 @@ static const ShellCommand commands[] = {
 };
 
 static const ShellConfig shell_cfg0 = {(BaseSequentialStream *)&SDU1, commands};
-static const ShellConfig shell_cfg1 = {(BaseSequentialStream *)&SD1,  commands};
-static const ShellConfig shell_cfg2 = {(BaseSequentialStream *)&SD2,  commands};
-static const ShellConfig shell_cfg3 = {(BaseSequentialStream *)&SD3,  commands};
-static const ShellConfig shell_cfg4 = {(BaseSequentialStream *)&SD4,  commands};
-static const ShellConfig shell_cfg5 = {(BaseSequentialStream *)&SD5,  commands};
-static const ShellConfig shell_cfg6 = {(BaseSequentialStream *)&SD6,  commands};
+
+/* Added by myself */
+/*
+ * This is a periodic thread that does absolutely nothing except flashing
+ * a LED.
+ */
+static WORKING_AREA(waThread1, 128);
+static msg_t Thread1(void *arg) {
+
+  (void)arg;
+  chRegSetThreadName("blinker");
+  while (TRUE) {
+    palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
+    chThdSleepMilliseconds(500);
+    palClearPad(GPIOD, GPIOD_LED3);     /* Orange.  */
+    chThdSleepMilliseconds(500);
+  }
+}
+/* Added by myself */
 
 /*
  * Application entry point.
@@ -55,7 +72,7 @@ int main(void) {
 	Thread *shelltp0 = NULL;
 	Thread *shelltp2 = NULL;
 
-	unsigned int i = 0;
+	//unsigned int i = 0;
 	/*
 	 * System initializations.
 	 * - HAL initialization, this also initializes the configured device drivers
@@ -70,31 +87,6 @@ int main(void) {
 	 */
 	sduObjectInit(&SDU1);
 	sduStart(&SDU1, &serusbcfg);
-	// Activate all serial drivers.
-	sdStart(&SD1, NULL);
-	sdStart(&SD2, NULL);
-	sdStart(&SD3, NULL);
-	sdStart(&SD4, NULL);
-	sdStart(&SD5, NULL);
-	sdStart(&SD6, NULL);
-	// Activates the UART driver 1, PA9(TX) and PA10(RX) are routed to USART1.
-	palSetPadMode(GPIOB, 6, PAL_MODE_ALTERNATE(7));
-	palSetPadMode(GPIOB, 7, PAL_MODE_ALTERNATE(7));
-	// Activates the UART driver 2, PA2(TX) and PA3(RX) are routed to USART2.
-	palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
-	palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
-	// Activates the UART driver 3, PB10(TX) and PB11(RX) are routed to USART3.
-	palSetPadMode(GPIOB, 10, PAL_MODE_ALTERNATE(7));
-	palSetPadMode(GPIOB, 11, PAL_MODE_ALTERNATE(7));
-	// Activates the UART driver 4, PC10(TX) and PC11(RX) are routed to UART4.
-	palSetPadMode(GPIOC, 10, PAL_MODE_ALTERNATE(8));
-	palSetPadMode(GPIOC, 11, PAL_MODE_ALTERNATE(8));
-	// Activates the UART driver 5, PC12(TX) and PD2(RX) are routed to UART5.
-	palSetPadMode(GPIOC, 12, PAL_MODE_ALTERNATE(8));
-	palSetPadMode(GPIOD, 2, PAL_MODE_ALTERNATE(8));
-	// Activates the UART driver 6, PC6(TX) and PC7(RX) are routed to USART6.
-	palSetPadMode(GPIOC, 6, PAL_MODE_ALTERNATE(8));
-	palSetPadMode(GPIOC, 7, PAL_MODE_ALTERNATE(8));
 
 	/*
 	 * Activates the USB driver and then the USB bus pull-up on D+.
@@ -102,21 +94,19 @@ int main(void) {
 	 * after a reset.
 	 */
 	usbDisconnectBus(serusbcfg.usbp);
-	chThdSleepMilliseconds(250);
+	chThdSleepMilliseconds(1500);
 	usbStart(serusbcfg.usbp, &usbcfg);
 	usbConnectBus(serusbcfg.usbp);
 
-	shellCreate(&shell_cfg1, SHELL_WA_SIZE, NORMALPRIO);
-	shellCreate(&shell_cfg2, SHELL_WA_SIZE, NORMALPRIO);
-	shellCreate(&shell_cfg3, SHELL_WA_SIZE, NORMALPRIO);
-	shellCreate(&shell_cfg4, SHELL_WA_SIZE, NORMALPRIO);
-	shellCreate(&shell_cfg5, SHELL_WA_SIZE, NORMALPRIO);
-	shellCreate(&shell_cfg6, SHELL_WA_SIZE, NORMALPRIO);
+	/* added by myself */
+	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+	/* added by myself */
+
 	/*
 	 * Normal main() thread activity, in this demo it just performs
 	 * a shell respawn upon its termination.
 	 */
-	while (true) {
+	while (1) {
 		if (!shelltp0) {
 			if (SDU1.config->usbp->state == USB_ACTIVE) {
 				/* Spawns a new shell.*/
